@@ -1,0 +1,90 @@
+==================
+Interface, storage, config
+==================
+
+interface CheckoutInterface {
+  entry checkout {
+    actor Customer
+    input SubmitOrder
+    output CheckoutAccepted
+    calls Checkout
+  }
+}
+
+storage OrderStore<table> for Order {
+  durability persistent
+}
+
+storage CartCache<cache> for Cart {
+  durability transient
+}
+
+config CheckoutConfig for Checkout {
+  redis: RedisConfig {
+    required ttl_seconds
+    default {
+      ttl_seconds 1800
+    }
+    validate "ttl must be positive"
+  }
+}
+
+---
+
+(source_file
+  (interface_def
+    name: (identifier)
+    (interface_entry
+      name: (identifier)
+      (interface_entry_stmt
+        actor: (ref
+          (path
+            (identifier))))
+      (interface_entry_stmt
+        input: (ref
+          (path
+            (identifier))))
+      (interface_entry_stmt
+        output: (ref
+          (path
+            (identifier))))
+      (interface_entry_stmt
+        calls: (ref
+          (path
+            (identifier))))))
+  (storage_def
+    name: (identifier)
+    kind: (storage_kind)
+    target: (ref
+      (path
+        (identifier)))
+    (storage_stmt
+      durability: (durability_kind)))
+  (storage_def
+    name: (identifier)
+    kind: (storage_kind)
+    target: (ref
+      (path
+        (identifier)))
+    (storage_stmt
+      durability: (durability_kind)))
+  (config_def
+    name: (identifier)
+    target: (ref
+      (path
+        (identifier)))
+    (config_stmt
+      (config_item
+        name: (identifier)
+        type: (ref
+          (path
+            (identifier)))
+        (config_item_stmt
+          required: (identifier))
+        (config_item_stmt
+          (setting
+            key: (identifier)
+            value: (value
+              (integer))))
+        (config_item_stmt
+          validate: (string))))))

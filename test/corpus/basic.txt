@@ -1,0 +1,59 @@
+==================
+Basic MoJu
+==================
+
+struct Order {
+  unique id
+  status: OrderStatus
+}
+
+state OrderStatus {
+  Created
+  Paid
+}
+
+event PaymentSucceeded {
+  order
+}
+
+lifecycle OrderLifecycle for Order.status {
+  initial Created
+  transition Created -> Paid on PaymentSucceeded
+}
+
+---
+
+(source_file
+  (struct_def
+    name: (identifier)
+    (field_def
+      name: (identifier))
+    (field_def
+      name: (identifier)
+      type: (ref
+        (path
+          (identifier)))))
+  (state_def
+    name: (identifier)
+    (state_value
+      name: (identifier))
+    (state_value
+      name: (identifier)))
+  (event_def
+    name: (identifier)
+    (event_field
+      name: (identifier)))
+  (lifecycle_def
+    name: (identifier)
+    target: (path
+      (identifier)
+      (identifier))
+    (lifecycle_stmt
+      state: (identifier))
+    (lifecycle_stmt
+      (transition_stmt
+        from: (identifier)
+        to: (identifier)
+        event: (ref
+          (path
+            (identifier)))))))

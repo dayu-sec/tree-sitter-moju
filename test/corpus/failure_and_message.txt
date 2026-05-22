@@ -1,0 +1,89 @@
+==================
+Failure and message
+==================
+
+failure PaymentFailure : PaymentError {
+  identity PaymentError.payment_timeout
+  description "Payment gateway did not respond in time"
+  tag timeout
+}
+
+failure_policy PaymentTimeoutPolicy<PaymentFailure> {
+  payment_timeout: then emit PaymentPendingMarked
+}
+
+failure_policy GenericPolicy : BasePolicy {
+  slot_a: then ignore then throw
+}
+
+message<command> SubmitOrder {
+  cart
+}
+
+message<query> GetOrder {
+  order_id
+}
+
+message<response> OrderResponse {
+  order
+  status
+}
+
+---
+
+(source_file
+  (failure_def
+    name: (identifier)
+    parent: (ref
+      (path
+        (identifier)))
+    (failure_stmt
+      identity: (path
+        (identifier)
+        (identifier)))
+    (failure_stmt
+      description: (string))
+    (failure_stmt
+      tag: (identifier)))
+  (failure_policy_def
+    name: (identifier)
+    view: (ref
+      (path
+        (identifier)))
+    (failure_policy_stmt
+      (slot_policy
+        slot: (identifier)
+        (then_fail_action
+          (fail_action
+            event: (ref
+              (path
+                (identifier))))))))
+  (failure_policy_def
+    name: (identifier)
+    parent: (ref
+      (path
+        (identifier)))
+    (failure_policy_stmt
+      (slot_policy
+        slot: (identifier)
+        (then_fail_action
+          (fail_action))
+        (then_fail_action
+          (fail_action)))))
+  (message_def
+    role: (message_role)
+    name: (identifier)
+    (field_def
+      name: (identifier)))
+  (message_def
+    role: (message_role)
+    name: (identifier)
+    (field_def
+      name: (identifier)))
+  (message_def
+    role: (message_role)
+    name: (identifier)
+    (field_def
+      name: (identifier))
+    (field_def
+      name: (identifier))))

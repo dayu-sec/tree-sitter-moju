@@ -1,0 +1,136 @@
+==================
+Dataflow, target, binding
+==================
+
+dataflow OrderDataflow {
+  node<message> SubmitOrder
+  node<storage> OrderStore
+  edge<write> SubmitOrder -> OrderStore {
+    data Order.id, Order.status
+  }
+}
+
+target<bin, http> {
+  name "checkout_service"
+}
+
+target<mod> {
+  path "src/checkout"
+}
+
+bind CheckoutInterface by protocol<http> {
+  entry checkout {
+    route POST "/checkout/orders"
+    input SubmitOrder
+    output CheckoutAccepted status 202
+  }
+}
+
+bind OrderStore to sqldb<postgres> {
+  table orders
+  primary_key id
+  index user
+}
+
+bind CheckoutConfig to file<toml> {
+  path {
+    env CONFIG_PATH
+    default "/etc/config.toml"
+  }
+}
+
+---
+
+(source_file
+  (dataflow_def
+    name: (identifier)
+    (dataflow_stmt
+      (data_node_stmt
+        kind: (data_node_kind)
+        target: (ref
+          (path
+            (identifier)))))
+    (dataflow_stmt
+      (data_node_stmt
+        kind: (data_node_kind)
+        target: (ref
+          (path
+            (identifier)))))
+    (dataflow_stmt
+      (data_edge_stmt
+        mode: (data_edge_mode)
+        from: (ref
+          (path
+            (identifier)))
+        to: (ref
+          (path
+            (identifier)))
+        (data_edge_body
+          data: (path_list
+            (path
+              (identifier)
+              (identifier))
+            (path
+              (identifier)
+              (identifier)))))))
+  (target_def
+    kind: (target_kind)
+    protocol: (protocol_name)
+    (setting
+      key: (identifier)
+      value: (value
+        (string))))
+  (target_def
+    kind: (target_kind)
+    (setting
+      key: (identifier)
+      value: (value
+        (string))))
+  (binding_def
+    (interface_binding
+      interface: (ref
+        (path
+          (identifier)))
+      protocol: (protocol_binding
+        protocol: (protocol_name))
+      (interface_binding_entry
+        name: (identifier)
+        (interface_binding_stmt
+          method: (identifier)
+          path: (string))
+        (interface_binding_stmt
+          type: (ref
+            (path
+              (identifier))))
+        (interface_binding_stmt
+          type: (ref
+            (path
+              (identifier)))
+          status: (integer)))))
+  (binding_def
+    (storage_binding
+      storage: (ref
+        (path
+          (identifier)))
+      adapter: (storage_adapter
+        kind: (storage_adapter_kind)
+        target: (identifier))
+      (storage_binding_stmt
+        table: (identifier))
+      (storage_binding_stmt
+        primary_key: (identifier))
+      (storage_binding_stmt
+        index: (identifier))))
+  (binding_def
+    (config_binding
+      config: (ref
+        (path
+          (identifier)))
+      provider: (config_provider
+        format: (config_file_format))
+      (config_binding_stmt
+        (path_binding
+          (path_binding_stmt
+            env: (identifier))
+          (path_binding_stmt
+            default: (string)))))))

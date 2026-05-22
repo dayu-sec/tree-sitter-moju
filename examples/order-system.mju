@@ -1,0 +1,170 @@
+struct Order {
+  unique id
+  user
+  status: OrderStatus
+}
+
+state OrderStatus {
+  Created
+  Paid
+  Cancelled
+}
+
+event PaymentSucceeded {
+  order
+}
+
+failure PaymentFailure : PaymentError {
+  identity PaymentError.payment_timeout
+  description "Payment gateway did not respond in time"
+  tag timeout
+}
+
+failure_policy PaymentTimeoutPolicy<PaymentFailure> {
+  payment_timeout: then emit PaymentPendingMarked
+}
+
+message<command> SubmitOrder {
+  cart
+}
+
+command LegacyCommand {
+  data
+}
+
+actor Customer {
+  identity customer
+  can SubmitOrder
+  access protocol<http>
+}
+
+interface CheckoutInterface {
+  entry checkout {
+    actor Customer
+    input SubmitOrder
+    output CheckoutAccepted
+    calls Checkout
+  }
+}
+
+storage OrderStore<table> for Order {
+  durability persistent
+}
+
+config CheckoutRuntimeConfig for Checkout {
+  redis: RedisConfig {
+    required ttl_seconds
+    default {
+      ttl_seconds 1800
+    }
+  }
+}
+
+dataflow OrderDataflow {
+  node<message> SubmitOrder
+  node<storage> OrderStore
+  node<cap> PaymentGateway
+  edge<write> SubmitOrder -> OrderStore {
+    data Order.id, Order.status
+  }
+}
+
+target<bin, http> {
+  name "checkout_service"
+}
+
+bind CheckoutInterface by protocol<http> {
+  entry checkout {
+    route POST "/checkout/orders"
+    input SubmitOrder
+    output CheckoutAccepted status 202
+  }
+}
+
+bind OrderStore to sqldb<postgres> {
+  table orders
+  primary_key id
+  index user
+}
+
+bind CheckoutRuntimeConfig to file<toml> {
+  path {
+    env CHECKOUT_CONFIG_PATH
+    default "/etc/checkout/config.toml"
+  }
+}
+
+lifecycle OrderLifecycle for Order.status {
+  initial Created
+
+  transition Created -> Paid on PaymentSucceeded
+  forbid Paid -> Cancelled
+}
+
+cap PaymentGateway {
+  async op CreatePaymentIntent {
+    input Order
+    ack PaymentIntentAccepted
+    result PaymentSucceeded
+  }
+}
+
+layer Application
+layer Infrastructure
+
+module Checkout {
+  layer Application
+  depends Order
+  depends PaymentGateway
+  provides CheckoutInterface by protocol<http>
+}
+
+module PaymentAdapter {
+  layer Infrastructure
+  implements PaymentGateway
+}
+
+flow Checkout {
+  actor Customer
+  trigger SubmitOrder
+
+  depends Order
+  creates Order
+
+  require {
+    SubmitOrder.cart
+  }
+
+  step CreateOrder {
+    create Order {
+      status = Created
+      user = SubmitOrder.actor.id
+    }
+  }
+}
+
+verify Success for flow Checkout {
+  given {
+    SubmitOrder.cart = Cart.id
+  }
+
+  mock PaymentGateway.CreatePaymentIntent -> PaymentSucceeded {
+    order = Order.id
+  }
+
+  when SubmitOrder
+
+  expect {
+    Order.status == Created
+  }
+}
+
+decision CacheTTL {
+  title "Cart session TTL"
+  context "Carts must expire to free memory"
+  choose "30-minute TTL"
+  reject "1-hour TTL" because "memory pressure under load spikes"
+  accept_tradeoff "Users may lose in-progress cart after idle"
+  mitigate "Notify user 5 min before expiry"
+  revisit_when "Session stickiness is implemented"
+}

@@ -1,0 +1,127 @@
+==================
+Architecture and verify
+==================
+
+cap PaymentGateway {
+  async op CreatePaymentIntent {
+    input PaymentIntent
+    ack PaymentIntentAccepted
+    result PaymentSucceeded
+  }
+}
+
+module Checkout {
+  layer Application
+  depends Order, PaymentGateway
+}
+
+module PaymentAdapter {
+  layer Infrastructure
+  implements PaymentGateway
+}
+
+verify Success for flow Checkout {
+  given {
+    SubmitOrder.cart = Cart.id
+  }
+
+  mock PaymentGateway.CreatePaymentIntent -> PaymentSucceeded {
+    order = Order.id
+  }
+
+  when SubmitOrder
+
+  expect {
+    Order.status == Created
+  }
+}
+
+---
+
+(source_file
+  (capability_def
+    name: (identifier)
+    (operation_def
+      name: (identifier)
+      (operation_stmt
+        input: (path
+          (identifier)))
+      (operation_stmt
+        event: (ref
+          (path
+            (identifier))))
+      (operation_stmt
+        event: (ref
+          (path
+            (identifier))))))
+  (module_def
+    name: (identifier)
+    (module_stmt
+      layer: (identifier))
+    (module_stmt
+      items: (ref_list
+        (ref
+          (path
+            (identifier)))
+        (ref
+          (path
+            (identifier))))))
+  (module_def
+    name: (identifier)
+    (module_stmt
+      layer: (identifier))
+    (module_stmt
+      caps: (ref_list
+        (ref
+          (path
+            (identifier))))))
+  (verify_def
+    name: (identifier)
+    flow: (ref
+      (path
+        (identifier)))
+    (verify_stmt
+      (given_block
+        (given_stmt
+          target: (path
+            (identifier)
+            (identifier))
+          (assign_op)
+          value: (expr
+            (path
+              (identifier)
+              (identifier))))))
+    (verify_stmt
+      (mock_stmt
+        operation: (op_path
+          (path
+            (identifier)
+            (identifier)))
+        (mock_outcome
+          (ref
+            (path
+              (identifier))))
+        (mock_body
+          (assignment
+            name: (identifier)
+            value: (expr
+              (path
+                (identifier)
+                (identifier)))))))
+    (verify_stmt
+      (when_stmt
+        command: (ref
+          (path
+            (identifier)))))
+    (verify_stmt
+      (expect_block
+        (condition
+          (compare_condition
+            (expr
+              (path
+                (identifier)
+                (identifier)))
+            (compare_op)
+            (expr
+              (path
+                (identifier)))))))))
