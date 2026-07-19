@@ -42,7 +42,8 @@ message<response> OrderResponse {
         (identifier)
         (identifier)))
     (failure_stmt
-      description: (string))
+      description: (text
+        (string)))
     (failure_stmt
       tag: (identifier)))
   (failure_policy_def
@@ -71,17 +72,20 @@ message<response> OrderResponse {
         (then_fail_action
           (fail_action)))))
   (message_def
-    role: (message_role)
+    roles: (message_role_list
+      (message_role))
     name: (identifier)
     (field_def
       name: (identifier)))
   (message_def
-    role: (message_role)
+    roles: (message_role_list
+      (message_role))
     name: (identifier)
     (field_def
       name: (identifier)))
   (message_def
-    role: (message_role)
+    roles: (message_role_list
+      (message_role))
     name: (identifier)
     (field_def
       name: (identifier))

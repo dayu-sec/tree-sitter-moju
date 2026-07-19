@@ -55,17 +55,21 @@ config CheckoutConfig for Checkout {
   (storage_def
     name: (identifier)
     kind: (storage_kind)
-    target: (ref
-      (path
-        (identifier)))
+    target: (storage_target_list
+      (storage_target
+        (ref
+          (path
+            (identifier)))))
     (storage_stmt
       durability: (durability_kind)))
   (storage_def
     name: (identifier)
     kind: (storage_kind)
-    target: (ref
-      (path
-        (identifier)))
+    target: (storage_target_list
+      (storage_target
+        (ref
+          (path
+            (identifier)))))
     (storage_stmt
       durability: (durability_kind)))
   (config_def
@@ -83,8 +87,11 @@ config CheckoutConfig for Checkout {
           required: (identifier))
         (config_item_stmt
           (setting
-            key: (identifier)
+            key: (path
+              (identifier))
             value: (value
-              (integer))))
+              (value_atom
+                (integer)))))
         (config_item_stmt
-          validate: (string))))))
+          validate: (text
+            (string)))))))

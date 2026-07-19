@@ -1,0 +1,571 @@
+==================
+Meta, usecase, subsystem
+==================
+
+subsystem CustomerDataVault {
+  meta {
+    label zh "客户数据金库"
+    summary zh "客户数据安全保管子系统。"
+    description zh """
+    负责客户数据和咨询记录的接入、保管、查询和归档。
+    """
+    alias zh "数据金库"
+    tag "custody"
+  }
+
+  uses module Business.DataCustody
+  uses module DataSec.SecureStorage
+}
+
+usecase CustomerDataCustody {
+  meta {
+    label zh "客户数据保管"
+    label en "Customer Data Custody"
+    summary zh "接收外部客户和咨询数据，形成保管回执。"
+  }
+
+  actor Business.ExternalBusinessSystem
+  trigger Business.IngestConsultation
+
+  outcome Business.CustodyReceipt
+  outcome DataSec.MixedDataStored
+
+  flow Business.DataCustodyFlow
+  scenario Business.CustomerDataCustody
+
+  verify Business.FullPayloadCustodied
+}
+
+---
+
+(source_file
+  (subsystem_def
+    (identifier)
+    (subsystem_stmt
+      (meta_block
+        (meta_stmt
+          (locale)
+          (text
+            (string)))
+        (meta_stmt
+          (locale)
+          (text
+            (string)))
+        (meta_stmt
+          (locale)
+          (text
+            (multiline_string)))
+        (meta_stmt
+          (locale)
+          (text
+            (string)))
+        (meta_stmt
+          (text
+            (string)))))
+    (subsystem_stmt
+      (ref_list
+        (ref
+          (path
+            (identifier)
+            (identifier)))))
+    (subsystem_stmt
+      (ref_list
+        (ref
+          (path
+            (identifier)
+            (identifier))))))
+  (usecase_def
+    (identifier)
+    (usecase_stmt
+      (meta_block
+        (meta_stmt
+          (locale)
+          (text
+            (string)))
+        (meta_stmt
+          (locale)
+          (text
+            (string)))
+        (meta_stmt
+          (locale)
+          (text
+            (string)))))
+    (usecase_stmt
+      (ref
+        (path
+          (identifier)
+          (identifier))))
+    (usecase_stmt
+      (ref
+        (path
+          (identifier)
+          (identifier))))
+    (usecase_stmt
+      (ref
+        (path
+          (identifier)
+          (identifier))))
+    (usecase_stmt
+      (ref
+        (path
+          (identifier)
+          (identifier))))
+    (usecase_stmt
+      (ref
+        (path
+          (identifier)
+          (identifier))))
+    (usecase_stmt
+      (ref
+        (path
+          (identifier)
+          (identifier))))
+    (usecase_stmt
+      (ref
+        (path
+          (identifier)
+          (identifier))))))
+
+==================
+Struct communication and scenario
+==================
+
+struct Order implements Validatable, Activable {
+  unique id: String
+  amount: Int
+  status: OrderStatus
+
+  op<sync> InventoryReserved(cart, items);
+  op InventoryReleased(cart, items);
+
+  send OrderCreated -> ConfigHistoryInfo {
+    orderId = this.id
+    amount = this.amount
+  }
+}
+
+scenario PlaceOrder {
+  participant Order
+  participant PaymentGateway
+
+  Order send OrderCreated -> ConfigHistoryInfo
+
+  alt Paid when equals(Order.status, Paid) {
+    PaymentGateway send<async> PaymentSucceeded -> Order
+  }
+}
+
+---
+
+(source_file
+  (struct_def
+    (identifier)
+    (implements_clause
+      (ref_list
+        (ref
+          (path
+            (identifier)))
+        (ref
+          (path
+            (identifier)))))
+    (struct_body
+      (field_def
+        (identifier)
+        (ref
+          (path
+            (identifier)))))
+    (struct_body
+      (field_def
+        (identifier)
+        (ref
+          (path
+            (identifier)))))
+    (struct_body
+      (field_def
+        (identifier)
+        (ref
+          (path
+            (identifier)))))
+    (struct_body
+      (struct_op_def
+        (op_strategy)
+        (ref
+          (path
+            (identifier)))
+        (identifier_list
+          (identifier)
+          (identifier))))
+    (struct_body
+      (struct_op_def
+        (ref
+          (path
+            (identifier)))
+        (identifier_list
+          (identifier)
+          (identifier))))
+    (struct_body
+      (send_stmt
+        (ref
+          (path
+            (identifier)))
+        (ref
+          (path
+            (identifier)))
+        (assignment
+          (identifier)
+          (expr
+            (path
+              (identifier)
+              (identifier))))
+        (assignment
+          (identifier)
+          (expr
+            (path
+              (identifier)
+              (identifier)))))))
+  (scenario_def
+    (identifier)
+    (scenario_stmt
+      (ref
+        (path
+          (identifier))))
+    (scenario_stmt
+      (ref
+        (path
+          (identifier))))
+    (scenario_stmt
+      (scenario_send_stmt
+        (ref
+          (path
+            (identifier)))
+        (ref
+          (path
+            (identifier)))
+        (ref
+          (path
+            (identifier)))))
+    (scenario_stmt
+      (scenario_alt_block
+        (identifier)
+        (predicate_call
+          (predicate_name)
+          (path
+            (identifier)
+            (identifier))
+          (expr
+            (path
+              (identifier))))
+        (scenario_stmt
+          (scenario_send_stmt
+            (ref
+              (path
+                (identifier)))
+            (send_mode)
+            (ref
+              (path
+                (identifier)))
+            (ref
+              (path
+                (identifier)))))))))
+
+==================
+Flow routing and retry policy
+==================
+
+retry_policy ClusterSyncRetry {
+  max 6
+  backoff exponential from 500ms factor 2
+}
+
+flow ConfigPublish when not_empty(PublishConfig.content) {
+  trigger PublishConfig
+
+  step Persist -> ConfigDataChangeEvent {
+    call ConfigPersist.PublishConfig {
+      retry ClusterSyncRetry
+      timeout 30s -> ConfigPublishFailed
+    }
+
+    match {
+      not_empty(PublishConfig.betaIps) -> ConfigBetaPublish
+      _ -> FormalPublish
+    }
+  }
+
+  react<async> ConfigDataChangeEvent {
+    step ClusterSync {
+      call ConfigNotify.NotifyClusterMembers with {
+        retry {
+          max 3
+          backoff linear from 1s step 2s
+        }
+      }
+    }
+  }
+}
+
+verify Success for flow ConfigPublish {
+  given PublishConfig.content = "x"
+  when PublishConfig
+  expect PublishConfig.content == "x"
+}
+
+---
+
+(source_file
+  (retry_policy_def
+    (identifier)
+    (retry_stmt
+      (integer))
+    (retry_stmt
+      (backoff_stmt
+        (backoff_strategy)
+        (duration)
+        (integer))))
+  (flow_def
+    (identifier)
+    (predicate_call
+      (predicate_name)
+      (path
+        (identifier)
+        (identifier)))
+    (flow_stmt
+      (ref
+        (path
+          (identifier))))
+    (flow_stmt
+      (step_def
+        (identifier)
+        (ref
+          (path
+            (identifier)))
+        (step_stmt
+          (call_stmt
+            (op_path
+              (path
+                (identifier)
+                (identifier)))
+            (call_policy_block
+              (call_policy_stmt
+                (retry_block
+                  (identifier)))
+              (call_policy_stmt
+                (timeout_policy
+                  (duration)
+                  (ref
+                    (path
+                      (identifier))))))))
+        (step_stmt
+          (match_block
+            (match_arm
+              (predicate_call
+                (predicate_name)
+                (path
+                  (identifier)
+                  (identifier)))
+              (ref
+                (path
+                  (identifier))))
+            (match_arm
+              (ref
+                (path
+                  (identifier))))))))
+    (flow_stmt
+      (react_block
+        (react_strategy)
+        (ref
+          (path
+            (identifier)))
+        (step_def
+          (identifier)
+          (step_stmt
+            (call_stmt
+              (op_path
+                (path
+                  (identifier)
+                  (identifier)))
+              (call_policy_block
+                (call_policy_stmt
+                  (retry_block
+                    (retry_stmt
+                      (integer))
+                    (retry_stmt
+                      (backoff_stmt
+                        (backoff_strategy)
+                        (duration)
+                        (duration))))))))))))
+  (verify_def
+    (identifier)
+    (ref
+      (path
+        (identifier)))
+    (verify_stmt
+      (given_inline
+        (given_stmt
+          (path
+            (identifier)
+            (identifier))
+          (assign_op)
+          (expr
+            (literal
+              (text
+                (string)))))))
+    (verify_stmt
+      (when_stmt
+        (ref
+          (path
+            (identifier)))))
+    (verify_stmt
+      (expect_inline
+        (condition
+          (compare_condition
+            (expr
+              (path
+                (identifier)
+                (identifier)))
+            (compare_op)
+            (expr
+              (literal
+                (text
+                  (string))))))))))
+
+==================
+Region and topology
+==================
+
+region<page> DailyAuditReportPage {
+  meta {
+    label zh "每日审计报告"
+    tag "audit"
+  }
+
+  orientation vertical
+  contains FilterBar, ReportTable
+  layout scrollable
+  on select emit AuditDateSelected
+  repeat RowRegion for row in AuditReport.rows separator "," when "not last"
+}
+
+impl DailyAuditReportState for DailyAuditReportPage
+bind Business.AccessAuditReport to DailyAuditReportPage
+
+node AccessAudit {
+  meta {
+    label zh "访问审计系统"
+  }
+}
+
+resource WormAuditStore {
+  kind object<worm>
+}
+
+network AuditNetwork {
+  meta {
+    label zh "审计区"
+  }
+  ingress internal_only
+  trust_level restricted
+  contains AccessAudit
+}
+
+link<network> AppServiceNetwork -> AuditNetwork
+bind WormAuditStore to AccessAudit with topology
+
+---
+
+(source_file
+  (region_def
+    (region_kind)
+    (identifier)
+    (region_stmt
+      (meta_block
+        (meta_stmt
+          (locale)
+          (text
+            (string)))
+        (meta_stmt
+          (text
+            (string)))))
+    (region_stmt
+      (orientation_kind))
+    (region_stmt
+      (region_contains_stmt
+        (identifier)
+        (identifier)))
+    (region_stmt
+      (layout_kind))
+    (region_stmt
+      (interaction_kind)
+      (identifier))
+    (region_stmt
+      (repeat_stmt
+        (identifier)
+        (identifier)
+        (path
+          (identifier)
+          (identifier))
+        (separator_def
+          (text
+            (string))
+          (text
+            (string))))))
+  (view_impl_def
+    (ref
+      (path
+        (identifier)))
+    (identifier))
+  (simple_binding
+    (binding_source
+      (ref
+        (path
+          (identifier)
+          (identifier))))
+    (identifier))
+  (node_def
+    (identifier)
+    (node_stmt
+      (meta_block
+        (meta_stmt
+          (locale)
+          (text
+            (string))))))
+  (resource_def
+    (identifier)
+    (resource_stmt
+      (resource_kind
+        (storage_adapter
+          (storage_adapter_kind)
+          (name_symbol
+            (identifier))))))
+  (network_def
+    (identifier)
+    (network_stmt
+      (meta_block
+        (meta_stmt
+          (locale)
+          (text
+            (string)))))
+    (network_stmt
+      (identifier))
+    (network_stmt
+      (identifier))
+    (network_stmt
+      (ref_list
+        (ref
+          (path
+            (identifier))))))
+  (link_def
+    (identifier)
+    (ref
+      (path
+        (identifier)))
+    (ref
+      (path
+        (identifier))))
+  (simple_binding
+    (binding_source
+      (ref
+        (path
+          (identifier))))
+    (identifier)
+    (identifier)))

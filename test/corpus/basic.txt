@@ -26,13 +26,15 @@ lifecycle OrderLifecycle for Order.status {
 (source_file
   (struct_def
     name: (identifier)
-    (field_def
-      name: (identifier))
-    (field_def
-      name: (identifier)
-      type: (ref
-        (path
-          (identifier)))))
+    (struct_body
+      (field_def
+        name: (identifier)))
+    (struct_body
+      (field_def
+        name: (identifier)
+        type: (ref
+          (path
+            (identifier))))))
   (state_def
     name: (identifier)
     (state_value

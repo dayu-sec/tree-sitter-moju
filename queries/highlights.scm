@@ -24,6 +24,36 @@
   "config"
   "dataflow"
   "target"
+  "usecase"
+  "subsystem"
+  "scenario"
+  "participant"
+  "alt"
+  "variant"
+  "outcome"
+  "meta"
+  "label"
+  "summary"
+  "alias"
+  "region"
+  "orientation"
+  "layout"
+  "contains"
+  "repeat"
+  "separator"
+  "impl"
+  "profile"
+  "react"
+  "match"
+  "retry_policy"
+  "link"
+  "network"
+  "resource"
+  "kind"
+  "assembly"
+  "run"
+  "scale"
+  "strategy"
   "bind"
   "for"
   "to"
@@ -119,8 +149,26 @@
   "bin"
   "lib"
   "mod"
+  "site"
+  "app"
+  "platform"
+  "web"
+  "desktop"
+  "mobile"
+  "sync"
   "query"
   "response"
+  "ui"
+  "page"
+  "window"
+  "section"
+  "vertical"
+  "horizontal"
+  "grid"
+  "scrollable"
+  "fill_remaining"
+  "keyboard_aware"
+  "fixed_bottom"
   "table"
   "document"
   "key_value"
@@ -156,26 +204,38 @@
 (capability_def name: (identifier) @type.definition)
 (flow_def name: (identifier) @type.definition)
 (verify_def name: (identifier) @type.definition)
+(usecase_def name: (identifier) @type.definition)
+(scenario_def name: (identifier) @type.definition)
+(subsystem_def name: (identifier) @type.definition)
 (module_def name: (identifier) @type.definition)
 (decision_def name: (identifier) @type.definition)
 (interface_def name: (identifier) @type.definition)
 (storage_def name: (identifier) @type.definition)
 (config_def name: (identifier) @type.definition)
 (dataflow_def name: (identifier) @type.definition)
+(region_def name: (identifier) @type.definition)
+(node_def name: (identifier) @type.definition)
+(resource_def name: (identifier) @type.definition)
+(network_def name: (identifier) @type.definition)
+(assembly_def name: (identifier) @type.definition)
+(profile_def name: (identifier) @type.definition)
 
 (interface_entry name: (identifier) @type.definition)
 (config_item name: (identifier) @property)
 
 (operation_def name: (identifier) @function.method)
+(struct_op_def name: (ref) @function.method)
 (step_def name: (identifier) @label)
 
 (field_def name: (identifier) @property)
 (event_field name: (identifier) @property)
 (command_field name: (identifier) @property)
 (assignment name: (identifier) @property)
-(setting key: (identifier) @property)
+(setting key: (path) @property)
+(object_property key: (identifier) @property)
 
 (string) @string
+(multiline_string) @string
 (integer) @number
 (duration) @number
 (boolean) @constant.builtin

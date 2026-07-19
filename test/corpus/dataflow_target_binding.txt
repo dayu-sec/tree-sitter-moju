@@ -75,17 +75,25 @@ bind CheckoutConfig to file<toml> {
               (identifier)))))))
   (target_def
     kind: (target_kind)
-    protocol: (protocol_name)
-    (setting
-      key: (identifier)
-      value: (value
-        (string))))
+    surface: (target_surface)
+    (target_stmt
+      (setting
+        key: (path
+          (identifier))
+        value: (value
+          (value_atom
+            (text
+              (string)))))))
   (target_def
     kind: (target_kind)
-    (setting
-      key: (identifier)
-      value: (value
-        (string))))
+    (target_stmt
+      (setting
+        key: (path
+          (identifier))
+        value: (value
+          (value_atom
+            (text
+              (string)))))))
   (binding_def
     (interface_binding
       interface: (ref
@@ -97,7 +105,8 @@ bind CheckoutConfig to file<toml> {
         name: (identifier)
         (interface_binding_stmt
           method: (identifier)
-          path: (string))
+          path: (text
+            (string)))
         (interface_binding_stmt
           type: (ref
             (path
@@ -114,7 +123,8 @@ bind CheckoutConfig to file<toml> {
           (identifier)))
       adapter: (storage_adapter
         kind: (storage_adapter_kind)
-        target: (identifier))
+        target: (name_symbol
+          (identifier)))
       (storage_binding_stmt
         table: (identifier))
       (storage_binding_stmt
@@ -133,4 +143,5 @@ bind CheckoutConfig to file<toml> {
           (path_binding_stmt
             env: (identifier))
           (path_binding_stmt
-            default: (string)))))))
+            default: (text
+              (string))))))))
